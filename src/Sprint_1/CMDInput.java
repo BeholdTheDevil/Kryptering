@@ -1,4 +1,4 @@
-package CommandLine;
+package Sprint_1;
 
 /**
  * Created by Anton on 2017-08-30.
@@ -11,7 +11,6 @@ public class CMDInput {
             case 1:
                 System.out.println("Så du säger: " + args[0]);
                 break;
-
             case 2:
                 int a = 0;
                 int b = 0;
@@ -24,15 +23,12 @@ public class CMDInput {
                 }
                 System.out.println(a + b);
                 break;
-
             case 3:
                 System.out.println(args[2] + " " + args[1] + " " + args[0]);
                 break;
-
             case 4:
                 System.out.println("Jag orkar inte mer, jag stänger ner");
                 break;
-
             default:
                 System.out.println("Programmet vet inte vad det ska göra! Avbryter...");
                 break;
