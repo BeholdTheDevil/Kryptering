@@ -1,4 +1,6 @@
 import javax.swing.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.io.File;
@@ -10,16 +12,34 @@ import java.net.URISyntaxException;
  */
 public class Controller {
 
-    private GUI view;
-    private EncryptionAlgorithm model;
     private File inputFile;
-    private String password;
     private String outputFilepath;
 
-
     Controller() {
-        view = new GUI();
-        model = new EncryptionAlgorithm();
+        GUI view = new GUI();
+        EncryptionAlgorithm model = new EncryptionAlgorithm();
+        addListeners(view, model);
+    }
+
+    /******************************
+     *                            *
+     *  ADD COMMANDLINE SUPPORT   *
+     *                            *
+     ******************************/
+    /*
+    Controller(String[] args) {
+
+    }
+    */
+
+    /**
+     * Adds FocusAdapters and ActionListeners to the GUI object.
+     * Adds FocusAdapters to the textfields for removing and replacing placeholder text.
+     * Also adds ActionListeners to buttons.
+     * @param view GUI access.
+     * @param model EncryptionAlgorithm access.
+     */
+    private void addListeners(GUI view, EncryptionAlgorithm model) {
 
         view.addOutputFilepathFocusListener(new FocusAdapter() {
             @Override
@@ -55,44 +75,84 @@ public class Controller {
             }
         });
 
-        view.addBrowseActionListener(actionEvent -> {
-            JFileChooser fc = new JFileChooser();
-            try {
-                fc.setCurrentDirectory(new File(Controller.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath()));
-            } catch(URISyntaxException e) {
-                fc.setCurrentDirectory(new File(System.getProperty("user.dir")));
-            }
-            int returnval = fc.showOpenDialog(null);
-            if(returnval == JFileChooser.APPROVE_OPTION) {
-                inputFile = fc.getSelectedFile();
-                view.setInputFilepath(inputFile.getPath());
-                view.setOutputText(inputFile.getPath().substring(0, inputFile.getPath().lastIndexOf('/') + 1));
+        view.addBrowseActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent actionEvent) {
+
+                JFileChooser fc = new JFileChooser();
+                try {
+                    fc.setCurrentDirectory(new File(Controller.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath()));
+                } catch(URISyntaxException e) {
+                    fc.setCurrentDirectory(new File(System.getProperty("user.dir")));
+                }
+                int returnval = fc.showOpenDialog(null);
+                if(returnval == JFileChooser.APPROVE_OPTION) {
+                    inputFile = fc.getSelectedFile();
+                    view.setInputFilepath(inputFile.getPath());
+                    view.setOutputText(inputFile.getPath().substring(0, inputFile.getPath().lastIndexOf('/') + 1));
+                }
             }
         });
 
         view.addEncryptActionListener(actionEvent ->  {
-            processFile(true);
+            processFile(view, model, true);
         });
 
         view.addDecryptActionListener(actionEvent -> {
-            processFile(false);
+            processFile(view, model, false);
         });
     }
 
-    private boolean validateInputs() {
+    /**
+     * Validates all inputfields.
+     * @param view GUI access.
+     * @param password the password as a String.
+     * @param inputFile the File that is to be encrypted.
+     * @return true for valid inputs and False for invalid inputs.
+     */
+    private boolean validateInputs(GUI view, String password, File inputFile) {
         return (inputFile != null && password != null && !password.equals("") && !view.getOutputText().equals("Output filepath...") && !view.getOutputText().equals(""));
     }
 
-    private byte[] fixFileForEncoding(String output, String input, byte[] data) {
+    /**
+     * Verifies and retrieves the inputfile extension and sets the outputfile extension
+     * to *.crt when encrypting. If no outputfile is given, defaults to 'inputfile'.crt.
+     * @param model EncryptionAlgorithm access.
+     * @param output String representing the path to the output.
+     * @param input String representing the path to the input.
+     * @param data byte array containing the data that is later encrypted.
+     * @return a byte array of the inputfile with the inputfile extension appended to the end of the array.
+     */
+    private byte[] fixFileForEncoding(EncryptionAlgorithm model, String output, String input, byte[] data) {
         String extension = input.substring(input.lastIndexOf('.'));
-        if(output.contains(".")) output = output.substring(0, output.lastIndexOf('.'));
+
+        if(output.endsWith("/")) {
+            output += input.substring(input.lastIndexOf("/")+1, input.length());
+        }
+
+        if(output.contains(".")) {
+            output = output.substring(0, output.lastIndexOf('.'));
+        }
+
         output += ".crt";
         outputFilepath = output;
+
         return model.setExtension(data, extension);
     }
 
-    private String fixFileForDecoding(String output, byte[] data) {
+    /**
+     * Validates output filename for decoding.
+     * Validates output filename for decoding and changes extension to the extension
+     * hidden within the encrypted file. Uses EncryptionAlgorithm.getExtension
+     * and EncryptionAlgorithm.getExtensionLength to retrieve the extension.
+     * @param model EncryptionAlgorithm access.
+     * @param output String representing the path to the output.
+     * @param data byte array containing the data that is later decrypted.
+     * @return the output filename with a correct extension.
+     */
+    private String fixFileForDecoding(EncryptionAlgorithm model, String output, byte[] data) {
         String temp = new String(output);
+
         if(temp.contains(".")) {
             int outputLastIndex = temp.lastIndexOf('.');
             temp = temp.substring(0, outputLastIndex);
@@ -101,50 +161,89 @@ public class Controller {
         return temp;
     }
 
-    private void processFile(boolean encode) {
+    /**
+     * File processing, either encrypts or decrypts.
+     * @param view GUI access.
+     * @param model EncryptionAlgorithm access.
+     * @param encode to encrypt or not to encrypt. #Shakespeare
+     */
+    private void processFile(GUI view, EncryptionAlgorithm model, boolean encode) {
+
         String pass = new String(view.getPassword());
-        password = pass.equals("Password...") ? "" : pass;
-        if(validateInputs()) {
+        String password = pass.equals("Password...") ? "" : pass;
+
+        if(validateInputs(view, password, inputFile)) {
+            /*Load file and fix extension of outputfile if the 'encode' flag is true*/
             byte[] fileData = model.loadFile(inputFile);
-            if(encode) fileData = fixFileForEncoding(view.getOutputText(), inputFile.getPath(), fileData);
+            if(encode) fileData = fixFileForEncoding(model, view.getOutputText(), inputFile.getPath(), fileData);
 
-            System.out.println("\n\n");
+            /*Passes filedata, together with password, to the actual processing of file.*/
+            byte[] encodedFile = model.encodeFile(fileData, password);
 
-            byte[] encodedFile = model.encodeFile(fileData, password);          //Actual processing of encrypted file here
             if(!encode) {
-                outputFilepath = fixFileForDecoding(view.getOutputText(), encodedFile);
+                outputFilepath = fixFileForDecoding(model, view.getOutputText(), encodedFile);
+                /*Removes the file extension bytes from the byte array before it is written out.*/
                 encodedFile = model.removeLastXBytes(encodedFile, model.getExtensionLength(encodedFile)+4);
             }
 
             File f = null;
             try {
                 f = new File(outputFilepath);
-                int returnval;
-
-                if(f.exists() && !f.isDirectory()) {
-                    returnval = view.createPrompt("Overwrite file?");
-                    if(returnval == JOptionPane.YES_OPTION) {
-                        model.writeToFile(encodedFile, outputFilepath);
-                    }
-                } else {
-                    returnval = view.createPrompt("Create new file?");
-                    if(returnval == JOptionPane.YES_OPTION) {
-                        model.writeToFile(encodedFile, outputFilepath);
-                    }
-                }
+                createOrOverwriteFile(view, model, f, encodedFile);
             } catch(IOException e) {
-                int returnval = view.createPrompt("Directory not found.", "Create directories?");
-                if(f != null && returnval == JOptionPane.YES_OPTION) {
-                    f.getParentFile().mkdirs();
-                    try {
-                        model.writeToFile(encodedFile, outputFilepath);
-                    } catch(IOException ie) {
-                        ie.printStackTrace();
-                    }
-                }
+                createDirectories(view, model, f, encodedFile);
             }
         }
+
         view.setPasswordText("Password...");
         view.setPasswordEchoChar((char)0);
+    }
+
+    /**
+     * File creation or overwriting if necessary.
+     * @param view GUI access.
+     * @param model EncryptionAlgorithm access.
+     * @param f File to write.
+     * @param encodedFile byte array containing the encrypted data.
+     * @throws IOException
+     */
+    private void createOrOverwriteFile(GUI view, EncryptionAlgorithm model, File f, byte[] encodedFile) throws IOException {
+        int response;
+
+        if(f.exists() && !f.isDirectory()) {
+            response = view.createPrompt("Overwrite file?");
+
+            if(response == JOptionPane.YES_OPTION) {
+                model.writeToFile(encodedFile, outputFilepath);
+            }
+        } else {
+            response = view.createPrompt("Create new file?");
+
+            if(response == JOptionPane.YES_OPTION) {
+                model.writeToFile(encodedFile, outputFilepath);
+            }
+        }
+    }
+
+    /**
+     * Create new directories if necessary.
+     * @param view GUI access.
+     * @param model EncryptionAlgorithm access.
+     * @param f File to write.
+     * @param encodedFile byte array containing the encrypted data.
+     */
+    private void createDirectories(GUI view, EncryptionAlgorithm model, File f, byte[] encodedFile) {
+
+        int returnval = view.createPrompt("Directory not found.", "Create directories?");
+
+        if(f != null && returnval == JOptionPane.YES_OPTION) {
+            f.getParentFile().mkdirs();
+
+            try {
+                model.writeToFile(encodedFile, outputFilepath);
+            } catch(IOException ie) {
+                ie.printStackTrace();
+            }
+        }
     }
 }
