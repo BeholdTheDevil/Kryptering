@@ -12,8 +12,6 @@ public class GUI extends JFrame {
     private JButton encrypt, decrypt, browse, connect;
     private JTextField inputFilepath, outputFilepath, connectionAddress;
     private JPasswordField passwordField;
-    private JFileChooser fc;
-    private JOptionPane prompt;
 
 
     GUI() {
