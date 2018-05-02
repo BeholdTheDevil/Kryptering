@@ -1,4 +1,5 @@
 import javax.swing.*;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.FocusAdapter;
@@ -15,22 +16,18 @@ public class Controller {
     private File inputFile;
     private String outputFilepath;
 
-    Controller() {
-        GUI view = new GUI();
-        EncryptionAlgorithm model = new EncryptionAlgorithm();
-        addListeners(view, model);
-    }
-
-    /******************************
-     *                            *
-     *  ADD COMMANDLINE SUPPORT   *
-     *                            *
-     ******************************/
+    //Note: ADD COMMANDLINE SUPPORT
     /*
     Controller(String[] args) {
 
     }
     */
+
+    Controller() {
+        GUI view = new GUI();
+        EncryptionAlgorithm model = new EncryptionAlgorithm();
+        addListeners(view, model);
+    }
 
     /**
      * Adds FocusAdapters and ActionListeners to the GUI object.
@@ -75,22 +72,19 @@ public class Controller {
             }
         });
 
-        view.addBrowseActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent actionEvent) {
+        view.addBrowseActionListener(actionEvent -> {
 
-                JFileChooser fc = new JFileChooser();
-                try {
-                    fc.setCurrentDirectory(new File(Controller.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath()));
-                } catch(URISyntaxException e) {
-                    fc.setCurrentDirectory(new File(System.getProperty("user.dir")));
-                }
-                int returnval = fc.showOpenDialog(null);
-                if(returnval == JFileChooser.APPROVE_OPTION) {
-                    inputFile = fc.getSelectedFile();
-                    view.setInputFilepath(inputFile.getPath());
-                    view.setOutputText(inputFile.getPath().substring(0, inputFile.getPath().lastIndexOf('/') + 1));
-                }
+            JFileChooser fc = new JFileChooser();
+            try {
+                fc.setCurrentDirectory(new File(Controller.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath()));
+            } catch(URISyntaxException e) {
+                fc.setCurrentDirectory(new File(System.getProperty("user.dir")));
+            }
+            int returnval = fc.showOpenDialog(null);
+            if(returnval == JFileChooser.APPROVE_OPTION) {
+                inputFile = fc.getSelectedFile();
+                view.setInputFilepath(inputFile.getPath());
+                view.setOutputText(inputFile.getPath().substring(0, inputFile.getPath().lastIndexOf('/') + 1));
             }
         });
 

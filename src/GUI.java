@@ -13,6 +13,7 @@ public class GUI extends JFrame {
     private JTextField inputFilepath, outputFilepath, connectionAddress;
     private JPasswordField passwordField;
 
+    //Note: Add network compatability
 
     GUI() {
         this.setTitle("Kryptering");
