@@ -24,17 +24,35 @@ public class EncryptionAlgorithm {
      * @param length the length of the file.
      * @return a byte array containing the extended key.
      */
-    private byte[] extendKey(byte[] key, int length) {
-        byte[] output;
+    private byte[] createKey(byte[] key, int length) {
+        byte[] output = new byte[0];
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             output = md.digest(key);
 
             while(output.length < length) {
-                output = addAllBytes(output, md.digest(output));
+                output = extendSingleKeyByte(key);
             }
         } catch(NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+            System.out.println("Error creating key: \n" + e.getMessage());
+        }
+        return output;
+    }
+
+    /**
+     * Extends the key one cycle, used in the createKey method and to variably
+     * extend the key when needed in network transmissions.
+     * @param key input key that gets extended.
+     * @see #createKey
+     * @return the key extended by 256 bits (32 bytes).
+     */
+    private byte[] extendSingleKeyByte(byte[] key) {
+        byte[] output = new byte[0];
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            output = addAllBytes(key, md.digest(key));
+        } catch(NoSuchAlgorithmException e) {
+            System.out.println("Error extending key: \n" + e.getMessage());
         }
         return output;
     }
@@ -89,7 +107,7 @@ public class EncryptionAlgorithm {
      * @return the byte array that is the result of applying the XOR operator to value with key.
      */
     private byte[] xorWithKey(byte[] value, byte[] key) {
-        key = extendKey(key, value.length);
+        key = createKey(key, value.length);
         byte[] output = new byte[value.length];
         for(int i = 0; i < value.length; i++) {
             /*Perform XOR*/

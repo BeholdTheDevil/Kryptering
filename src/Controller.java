@@ -13,6 +13,7 @@ import java.net.URISyntaxException;
  */
 public class Controller {
 
+    private final int port = 63036;
     private File inputFile;
     private String outputFilepath;
 
@@ -25,8 +26,10 @@ public class Controller {
 
     Controller() {
         GUI view = new GUI();
+        NetworkProtocol ntp = new NetworkProtocol(port);
+        new Thread(ntp).start();
         EncryptionAlgorithm model = new EncryptionAlgorithm();
-        addListeners(view, model);
+        addListeners(view, model, ntp);
     }
 
     /**
@@ -36,7 +39,7 @@ public class Controller {
      * @param view GUI access.
      * @param model EncryptionAlgorithm access.
      */
-    private void addListeners(GUI view, EncryptionAlgorithm model) {
+    private void addListeners(GUI view, EncryptionAlgorithm model, NetworkProtocol ntp) {
 
         view.addOutputFilepathFocusListener(new FocusAdapter() {
             @Override
@@ -52,6 +55,26 @@ public class Controller {
                     view.setOutputText("Output filepath...");
                 }
             }
+        });
+
+        view.addConnectAddressFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent focusEvent) {
+                if (view.getConnectionAddress().equals("localhost:63036")) {
+                    view.setConnectionAddress("");
+                }
+            }
+
+            @Override
+            public void focusLost(FocusEvent focusEvent) {
+                if (view.getConnectionAddress().equals("")) {
+                    view.setConnectionAddress("localhost:63036");
+                }
+            }
+        });
+
+        view.addConnectListener(actionEvent -> {
+
         });
 
         view.addPasswordFieldFocusListener(new FocusAdapter() {
