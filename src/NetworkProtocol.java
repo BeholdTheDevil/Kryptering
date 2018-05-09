@@ -1,13 +1,11 @@
-import javax.swing.*;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 
 /**
  * Created by anton on 2018-05-02.
  */
-public class NetworkProtocol implements Runnable {
+public class NetworkProtocol {
 
     private int port;
 
@@ -15,19 +13,58 @@ public class NetworkProtocol implements Runnable {
         this.port = port;
     }
 
-    @Override
-    public void run() {
+    public Socket getConnection() {
         Socket socket;
-        while(true) {
-            do {
-                socket = acceptConnection();
-            } while(socket == null);
+        do {
+            socket = acceptConnection();
+        } while(socket == null);
 
+        return socket;
+    }
 
+    public byte[] readByte(Socket socket) {
+        byte[] input = new byte[1];
+        try {
+            DataInputStream in = new DataInputStream(socket.getInputStream());
+            int n = in.read(input);
+
+            if(n == -1) {
+                return null;
+            }
+        } catch (IOException e) {
+            System.out.println("An error occurred while reading from the stream");
+            e.printStackTrace();
         }
 
+        return input;
+    }
 
+    public void disconnect(Socket socket) {
+        try {
+            DataOutputStream out = new DataOutputStream(socket.getOutputStream());
+            PrintStream ps = new PrintStream(out);
+            ps.println("DC");
 
+            ps.close();
+            out.close();
+            socket.close();
+        } catch (IOException e) {
+            System.out.println("An error occurred while disconnecting");
+            e.printStackTrace();
+        }
+    }
+
+    public void connect(Socket socket) {
+        try {
+            DataOutputStream out = new DataOutputStream(socket.getOutputStream());
+            PrintStream ps = new PrintStream(out);
+            ps.println("AC");
+
+            ps.close();
+            out.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private Socket acceptConnection() {

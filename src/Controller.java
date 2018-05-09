@@ -4,8 +4,10 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
+import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
+import java.net.Socket;
 import java.net.URISyntaxException;
 
 /**
@@ -27,9 +29,29 @@ public class Controller {
     Controller() {
         GUI view = new GUI();
         NetworkProtocol ntp = new NetworkProtocol(port);
-        new Thread(ntp).start();
         EncryptionAlgorithm model = new EncryptionAlgorithm();
         addListeners(view, model, ntp);
+
+        Socket socket;
+        int accCon;
+
+        while(true) {
+            socket = ntp.getConnection();
+            //Query user before allowing connection
+            accCon = JOptionPane.showConfirmDialog(null, "Accept connection from " + socket.getInetAddress() + "?", "Connection Alert", JOptionPane.YES_NO_OPTION);
+            if(accCon == JOptionPane.YES_OPTION) {
+                if(socket != null) {
+                    ntp.connect(socket);
+
+                    byte[] b;
+                    while((b = ntp.readByte(socket)) != null) {
+
+                    }
+                }
+            } else {
+                ntp.disconnect(socket);
+            }
+        }
     }
 
     /**
