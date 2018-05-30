@@ -15,13 +15,13 @@ public class GUI extends JFrame {
 
     //Note: Add network compatability
 
-    GUI() {
+    GUI(int port) {
         this.setTitle("Kryptering");
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         this.setLayout(new GridBagLayout());
         pane = this.getContentPane();
 
-        createComponents();
+        createComponents(port);
 
         this.pack();
         this.setResizable(false);
@@ -32,7 +32,7 @@ public class GUI extends JFrame {
     /**
      * Initalizes components.
      */
-    private void createComponents() {
+    private void createComponents(int port) {
         panel = new JPanel(new GridBagLayout());
         panel.setBackground(new Color(61, 61, 61));
 
@@ -47,7 +47,7 @@ public class GUI extends JFrame {
         connectionAddress = new JTextField();
         connectionAddress.setPreferredSize(new Dimension(400, 25));
         connectionAddress.setBorder(null);
-        connectionAddress.setText("localhost:63036");
+        connectionAddress.setText("localhost:" + port);
         connectionAddress.setForeground(new Color(130, 130, 130));
         connectionAddress.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 5));
 

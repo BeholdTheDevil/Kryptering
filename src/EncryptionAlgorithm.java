@@ -31,7 +31,8 @@ public class EncryptionAlgorithm {
             output = md.digest(key);
 
             while(output.length < length) {
-                output = extendSingleKeyByte(key);
+                System.out.println(output.length + ", " + length);
+                output = extendSingleKeyByte(output);
             }
         } catch(NoSuchAlgorithmException e) {
             System.out.println("Error creating key: \n" + e.getMessage());

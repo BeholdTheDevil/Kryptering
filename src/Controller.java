@@ -1,12 +1,7 @@
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
-import java.io.EOFException;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.net.Socket;
 import java.net.URISyntaxException;
 
@@ -15,7 +10,7 @@ import java.net.URISyntaxException;
  */
 public class Controller {
 
-    private final int port = 63036;
+    private final int port = 63035;
     private File inputFile;
     private String outputFilepath;
 
@@ -27,11 +22,14 @@ public class Controller {
     */
 
     Controller() {
-        GUI view = new GUI();
+        GUI view = new GUI(port);
         NetworkProtocol ntp = new NetworkProtocol(port);
         EncryptionAlgorithm model = new EncryptionAlgorithm();
         addListeners(view, model, ntp);
+        runNetworking(view, model, ntp);
+    }
 
+    private void runNetworking(GUI view, EncryptionAlgorithm model, NetworkProtocol ntp) {
         Socket socket;
         int accCon;
 
@@ -42,11 +40,28 @@ public class Controller {
             if(accCon == JOptionPane.YES_OPTION) {
                 if(socket != null) {
                     ntp.connect(socket);
+                    System.out.println("Connected");
 
+                    //Read communicationheader, header size is currently one for filesize.
+                    int size = ntp.readInt(socket);
+                    System.out.println(size);
+
+                    int readBytes = 0;
+                    byte[] data = new byte[size];
                     byte[] b;
-                    while((b = ntp.readByte(socket)) != null) {
-
+                    while((b = ntp.readByte(socket, 1)) != null) {
+                        data[readBytes] = b[0];
+                        readBytes++;
                     }
+
+                    for(int i = 0; i < data.length; i++) {
+                        System.out.println(data[0]);
+                    }
+                    /*try {
+                        model.writeToFile(data, outputFilepath);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }*/
                 }
             } else {
                 ntp.disconnect(socket);
@@ -82,7 +97,7 @@ public class Controller {
         view.addConnectAddressFocusListener(new FocusAdapter() {
             @Override
             public void focusGained(FocusEvent focusEvent) {
-                if (view.getConnectionAddress().equals("localhost:63036")) {
+                if (view.getConnectionAddress().equals("localhost:" + port)) {
                     view.setConnectionAddress("");
                 }
             }
@@ -90,13 +105,29 @@ public class Controller {
             @Override
             public void focusLost(FocusEvent focusEvent) {
                 if (view.getConnectionAddress().equals("")) {
-                    view.setConnectionAddress("localhost:63036");
+                    view.setConnectionAddress("localhost:" + port);
                 }
             }
         });
 
         view.addConnectListener(actionEvent -> {
+            String[] addr = view.getConnectionAddress().split(":");
+            Socket socket;
+            if(addr.length > 1)
+                ntp.setPort(Integer.parseInt(addr[1]));
+            try {
+                socket = ntp.connectTo(addr[0]);
 
+                String response;
+                while((response = ntp.readString(socket)) != null) {
+                    if(response.equals("AC")) {
+                        sendFile(view, model, socket);
+                        break;
+                    }
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         });
 
         view.addPasswordFieldFocusListener(new FocusAdapter() {
@@ -142,6 +173,40 @@ public class Controller {
         });
     }
 
+    private void sendFile(GUI view, EncryptionAlgorithm model, Socket socket) {
+        String pass = new String(view.getPassword());
+        String password = pass.equals("Password...") ? "" : pass;
+
+        if(validateInputs(view, password, inputFile)) {
+            /*Load file and fix extension of outputfile if the 'encode' flag is true*/
+            byte[] fileData = model.loadFile(inputFile);
+            System.out.println("File loaded as byte array");
+            fileData = fixFileForEncoding(model, view.getOutputText(), inputFile.getPath(), fileData);
+            System.out.println("File fixed for encoding");
+            /*Passes filedata, together with password, to the actual processing of file.*/
+            byte[] encodedFile = model.encodeFile(fileData, password);
+            System.out.println("File encoded");
+
+            try {
+                DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+                System.out.println("Fileoutputstream opened");
+                dos.writeInt(fileData.length);
+                System.out.println("Data sent, length: " + fileData.length);
+                for(int i = 0; i < encodedFile.length; i++) {
+                    dos.write(encodedFile[i]);
+                }
+                dos.flush();
+                dos.close();
+            } catch (IOException e) {
+                System.out.println("Error sending file to destination.");
+                e.printStackTrace();
+            }
+        }
+
+        view.setPasswordText("Password...");
+        view.setPasswordEchoChar((char)0);
+    }
+
     /**
      * Validates all inputfields.
      * @param view GUI access.
@@ -166,7 +231,7 @@ public class Controller {
         String extension = input.substring(input.lastIndexOf('.'));
 
         if(output.endsWith("/")) {
-            output += input.substring(input.lastIndexOf("/")+1, input.length());
+            output += input.substring(input.lastIndexOf("/") + 1, input.length());
         }
 
         if(output.contains(".")) {
